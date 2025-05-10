@@ -1,33 +1,34 @@
+import dbConnect from "@/lib/mongodb";
+import Note from "@/models/Note";
 
 export default async function handler(req, res) {
   if (req.method === 'PUT') {
     try {
-      const { id } = req.query; // ID of the note to edit (likely localId stored as _id by client)
-      const { title: noteTitle } = req.body; // New title
+      await dbConnect();
 
-      if (!id || typeof noteTitle !== 'string') {
-        return res.status(400).json({ error: 'Missing note ID or title' });
+      const { id } = req.query; // This needs to be the MongoDB _id
+      const { title: noteTitle, tags } = req.body;
+
+      if (!id || typeof noteTitle !== "string") {
+        return res.status(400).json({ error: "Missing note ID or title" });
       }
 
-      // TODO: Implement logic to update the note in your chosen data store.
-      // - Connect to the database/data source.
-      // - Find the note by its unique identifier (`id`).
-      // - Update the note's title to `noteTitle`.
-      // - Handle the case where the note is not found.
-      // - Replace the example response below.
+      const updatedNote = await Note.findByIdAndUpdate(
+        id,
+        { title: noteTitle, tags },
+        { new: true }
+      );
 
-      const noteFound = true; // Placeholder
-
-      if (noteFound) {
-        res.status(200).json({ message: 'Note edited successfully' });
-      } else {
-        res.status(404).json({ error: 'Note not found' });
+      if (!updatedNote) {
+        return res.status(404).json({ error: "Note not founnd" });
       }
+
+      res.status(200).json({ message: "Note edited successfully", updatedNote });
     } catch (error) {
-      console.error('Error editing note:', error);
-      res.status(500).json({ error: 'Failed to edit note' });
+      console.error("Error editing note:", error);
+      res.status(500).json({ error: "Failed to edit note" });
     }
   } else {
-    res.status(405).json({ error: 'Method not allowed' });
+    res.status(405).json({ error: "Method not allowed" });
   }
 }

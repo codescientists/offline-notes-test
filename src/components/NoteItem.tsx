@@ -1,182 +1,45 @@
 import React, { useEffect, useRef, useState } from 'react';
-import styled from 'styled-components';
-import SyncIndicator from './SyncIndicator'
-import { Note } from '../utils/notes'
-import { Button } from '../styles/styled';
+import SyncIndicator from './SyncIndicator';
+import { Note } from '../utils/notes';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
-
-const NoteItemWrapper = styled.div`
-  margin-bottom: 1rem;
-`;
-
-const NoteFrame = styled.li<{ isSubmitted?: boolean }>`
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  margin-bottom: 0.25rem;
-  max-height: 150px;
-  overflow-y: auto;
-  width: 500px;
-  word-wrap: break-word;
-  overflow: visible;
-  background-color: ${props => (!props.isSubmitted ? '#eee' : 'transparent')};
-
-  .note-timestamp {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    margin: 0.5rem;
-    font-size: 0.8rem;
-    color: #888;
-  }
-
-  .edit-buttons {
-    position: absolute;
-    bottom: 0.5rem;
-    right: 0.5rem;
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .note-content {
-    width: 95%;
-    flex-grow: 1;
-    overflow-wrap: break-word;
-    word-wrap: break-word;
-    word-break: break-word;
-    overflow-y: auto;
-    max-width: 100%;
-    margin-bottom: 0.75rem;
-  }
-
-  textarea {
-    width: 100%;
-    border: none;
-    resize: none;
-    overflow: hidden;
-    font-size: 1rem;
-    line-height: 1;
-    padding: 0;
-    margin: 0;
-    height: auto;
-    min-height: 0rem;
-  }
-`;
-
-const Content = styled.div`
-  flex-grow: 1;
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-  word-break: break-word;
-  overflow-y: auto;
-  max-width: 100%;
-  margin-bottom: 1rem;
-  padding-bottom: 0.25rem;
-`;
-
-const SaveButton = styled(Button)`
-  padding: 5px 10px;
-  font-size: 0.8rem;
-`;
-
-const CancelButton = styled(Button)`
-  padding: 5px 10px;
-  font-size: 0.8rem;
-`;
-
-const DeleteButton = styled.button`
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  background: none;
-  border: none;
-  color: rgba(0, 0, 0, 0.4);
-  font-size: 1rem;
-  cursor: pointer;
-`;
-
-const EditButton = styled(Button)`
-  position: absolute;
-  padding: 5px 10px;
-  bottom: 0.5rem;
-  right: 0.5rem;
-  font-size: 0.8rem;
-  cursor: pointer;
-`;
-
-const OfflineIndicatorWrapper = styled.div`
-  display: flex;
-  flex-direction: column; /* Update to column */
-  align-items: flex-end; /* Align text elements to the right */
-  justify-content: flex-end; /* Align text elements to the bottom */
-  position: relative;
-  bottom: 0;
-  right: 0;
-  font-size: 0.75rem; /* Adjust the font size to make the icon smaller */
-  color: #fff;
-`;
-
-const OfflineIndicator = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 0.25rem; /* Add margin-bottom for spacing between pairs */
-`;
-
-const OfflineIndicatorIcon = styled(FontAwesomeIcon)`
-  color: red;
-  margin-right: 0.25rem;
-`;
-
-const OfflineIndicatorText = styled.span`
-  font-size: 0.8rem;
-  color: red;
-`;
+import { faExclamationCircle, faTrash, faPen } from '@fortawesome/free-solid-svg-icons';
 
 interface NoteItemProps {
-  note: Note,
+  note: Note;
   onDeleteNote: (noteId: string) => Promise<void>;
-  onEditNote: (noteId: string, updatedTitle: string) => Promise<void>;
+  onEditNote: (noteId: string, updatedTitle: string, updatedTags: string[]) => Promise<void>;
+  setEditingNote: any;
+  setModalOpen: any;
 }
 
-const NoteItem: React.FC<NoteItemProps> = ({ note, onDeleteNote, onEditNote }) => {
+const NoteItem: React.FC<NoteItemProps> = ({ note, onDeleteNote, onEditNote, setEditingNote, setModalOpen }) => {
   const [isSyncing, setSyncing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(note.title);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleDelete = async () => {
-    // Set syncing state to true before making the request
     setSyncing(true);
-
     try {
-      // Make the delete request to the server
       if (note.localId !== undefined) {
         await onDeleteNote(note.localId);
       }
     } catch (error) {
       console.error('Error deleting note:', error);
     } finally {
-      // Set syncing state back to false after the request is complete
       setSyncing(false);
     }
   };
 
   const handleEdit = () => {
-    setIsEditing(true);
-    setTitle(note.title);
+    setEditingNote(note);
+    setModalOpen(true);
   };
 
   const handleSave = async () => {
     if (note.localId !== undefined) {
       setSyncing(true);
-      await onEditNote(note.localId, title);
+      await onEditNote(note.localId, title, note.tags || []);
       setSyncing(false);
       setIsEditing(false);
     }
@@ -196,55 +59,126 @@ const NoteItem: React.FC<NoteItemProps> = ({ note, onDeleteNote, onEditNote }) =
   }, [isEditing, title]);
 
   return (
-    <NoteItemWrapper>
-      <NoteFrame isSubmitted={note._id !== undefined}>
-        {isSyncing && <SyncIndicator/>}
-        <DeleteButton onClick={handleDelete}>[x]</DeleteButton>
-        <p className="note-timestamp">{new Date(note.createdAt).toUTCString()}</p>
-        <div className="note-content">
+    <div className="w-full transition-shadow hover:shadow-md rounded-xl border overflow-hidden">
+      <div
+        className={`relative flex flex-col p-3 overflow-hidden transition-all duration-300 ${note._id === undefined ? 'bg-gray-100' : 'bg-white'
+          }`}
+      >
+        {isSyncing && <SyncIndicator />}
+
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-400 w-1/2">
+            {new Date(note.createdAt).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })}
+
+          </p>
+
+          <div className="flex items-center justify-end w-full gap-2">
+            <button
+              onClick={handleEdit}
+              className="h-8 w-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-sm text-gray-500 hover:text-blue-600 transition"
+            >
+              <FontAwesomeIcon icon={faPen} className="" />
+            </button>
+            <button
+              onClick={handleDelete}
+              className="h-8 w-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-red-500 transition-colors"
+              title="Delete"
+            >
+              <FontAwesomeIcon icon={faTrash} />
+            </button>
+          </div>
+        </div>
+
+        <div className="note-content w-full overflow-y-auto mb-4 pr-2">
           {isEditing ? (
             <textarea
               ref={textareaRef}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus
+              className="w-full border border-gray-300 rounded p-2 resize-none focus:outline-blue-400"
             />
           ) : (
-            <Content>{note.title}</Content>
+            <div className="text-gray-800 text-base leading-relaxed">{note.title}</div>
           )}
         </div>
-        {isEditing ? (
-          <div className="edit-buttons">
-            <SaveButton onClick={handleSave}>Save</SaveButton>
-            <CancelButton onClick={handleCancel}>Cancel</CancelButton>
+
+        {note.tags && note.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 justify-self-end">
+            {note.tags.map((tag, idx) => (
+              <span
+                key={idx}
+                className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* {isEditing ? (
+          <div className="flex gap-2 mt-auto self-end">
+            <button
+              onClick={handleSave}
+              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            >
+              Save
+            </button>
+            <button
+              onClick={handleCancel}
+              className="px-3 py-1 text-sm bg-gray-400 text-white rounded hover:bg-gray-500 transition"
+            >
+              Cancel
+            </button>
           </div>
         ) : (
-          <EditButton onClick={handleEdit}>Edit</EditButton>
+          <div className="flex items-center justify-end w-full gap-2">
+            <button
+              onClick={handleEdit}
+              className="h-8 w-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-sm text-gray-500 hover:text-blue-600 transition"
+            >
+              <FontAwesomeIcon icon={faPen} className="" />
+            </button>
+            <button
+              onClick={handleDelete}
+              className="h-8 w-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-red-500 transition-colors"
+              title="Delete"
+            >
+              <FontAwesomeIcon icon={faTrash} />
+            </button>
+          </div>
+        )} */}
+      </div>
+
+      {(note.localDeleteSynced === false ||
+        note.localEditSynced === false ||
+        note._id === undefined) && (
+          <div className="flex flex-col items-start justify-end mt-1 text-sm text-red-600">
+            {note.localDeleteSynced === false && (
+              <div className="flex items-center">
+                <FontAwesomeIcon icon={faExclamationCircle} className="mr-1" />
+                Note deletion not synced
+              </div>
+            )}
+            {note.localEditSynced === false && (
+              <div className="flex items-center">
+                <FontAwesomeIcon icon={faExclamationCircle} className="mr-1" />
+                Note edit not synced
+              </div>
+            )}
+            {note._id === undefined && (
+              <div className="flex items-center">
+                <FontAwesomeIcon icon={faExclamationCircle} className="mr-1" />
+                Note submission not synced
+              </div>
+            )}
+          </div>
         )}
-      </NoteFrame>
-      {(note.localDeleteSynced === false || note.localEditSynced === false || note._id === undefined) && (
-        <OfflineIndicatorWrapper>
-          {note.localDeleteSynced === false && (
-            <OfflineIndicator>
-              <OfflineIndicatorIcon icon={faExclamationCircle} />
-              <OfflineIndicatorText>Note deletion not synced</OfflineIndicatorText>
-            </OfflineIndicator>
-          )}
-          {note.localEditSynced === false && (
-            <OfflineIndicator>
-              <OfflineIndicatorIcon icon={faExclamationCircle} />
-              <OfflineIndicatorText>Note edit not synced</OfflineIndicatorText>
-            </OfflineIndicator>
-          )}
-          {note._id === undefined && (
-            <OfflineIndicator>
-              <OfflineIndicatorIcon icon={faExclamationCircle} />
-              <OfflineIndicatorText>Note submission not synced</OfflineIndicatorText>
-            </OfflineIndicator>
-          )}
-        </OfflineIndicatorWrapper>
-      )}
-    </NoteItemWrapper>
+    </div>
   );
 };
 

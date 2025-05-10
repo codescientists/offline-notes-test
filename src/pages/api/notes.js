@@ -1,13 +1,13 @@
+import dbConnect from "@/lib/mongodb";
+import Note from "@/models/Note";
+
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
-      // TODO: Implement logic to fetch notes from your chosen data store (e.g., MongoDB, PostgreSQL, JSON file).
-      // - Connect to the database/data source.
-      // - Fetch all notes.
-      // - Consider sorting notes, e.g., by creation date (descending).
-      // - Replace the example response below with the actual notes.
+      await dbConnect();
 
-      const notes = []; // Example empty array
+      // Fetch all notes, sorted by creation date descending
+      const notes = await Note.find({}).sort({ createdAt: -1 });
 
       res.status(200).json(notes);
     } catch (error) {
